@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIM IDU - Chat de Análisis de Manuales</title>
+    <title>BIM IDU - Asistente de Manuales</title>
+    <link rel="icon" type="image/png" href="logo-bim-idu.png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script>
@@ -20,10 +22,18 @@
             }
         }
     </script>
+    <style>
+        /* Imagen o textura de fondo para el chat */
+        .bg-corporativo {
+            background-image: linear-gradient(rgba(248, 250, 252, 0.90), rgba(248, 250, 252, 0.90)), 
+                              url('https://www.transparenttextures.com/patterns/cubes.png'); /* Textura de planos/cubos sutil */
+            background-attachment: fixed;
+        }
+    </style>
 </head>
-<body class="bg-slate-50 h-screen flex flex-col font-sans">
+<body class="bg-slate-50 h-screen flex flex-col font-sans bg-corporativo">
 
-    <nav class="bg-white border-b border-slate-200 py-3 px-6 shadow-sm flex justify-between items-center">
+    <nav class="bg-white border-b border-slate-200 py-3 px-6 shadow-sm flex justify-between items-center z-10">
         <div class="flex items-center gap-4">
             <img src="logo-bim-idu.png" alt="BIM IDU Logo" class="h-12 object-contain" onerror="this.style.display='none'; document.getElementById('alt-logo').style.display='block';">
             <div id="alt-logo" class="hidden flex items-center gap-1 font-bold text-2xl">
@@ -32,49 +42,104 @@
         </div>
         <div class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-iduVerde animate-pulse"></span>
-            <span class="text-xs font-medium text-iduGris tracking-wider uppercase">Asistente IA Supervisor</span>
+            <span class="text-xs font-medium text-iduGris tracking-wider uppercase">Voz & Análisis Activo</span>
         </div>
     </nav>
 
     <main class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6" id="chat-container">
-        <div class="flex flex-col items-start max-w-3xl animate-fade-in">
+        <div class="flex flex-col items-start max-w-3xl">
             <div class="bg-white border-l-4 border-iduVerde p-4 rounded-r-2xl shadow-sm text-slate-700">
                 <p class="font-bold text-iduAzul mb-1">Estrategia BIM - IDU</p>
-                <p class="text-sm leading-relaxed">Bienvenido al sistema de consultas analíticas. Estoy entrenado con los manuales de especialidades de la entidad. ¿Qué norma, protocolo o directriz técnica deseas validar hoy?</p>
+                <p class="text-sm leading-relaxed">Bienvenido al sistema de consultas analíticas. Ahora puedes usar el **micrófono** para dictar tu pregunta directamente desde la obra. ¿Qué directriz técnica deseas validar hoy?</p>
             </div>
         </div>
     </main>
 
-    <footer class="p-4 bg-white border-t border-slate-200 shadow-lg">
-        <div class="max-w-4xl mx-auto relative flex items-center">
-            <input type="text" id="user-input" 
-                class="w-full p-4 pr-16 rounded-xl border border-slate-300 focus:ring-2 focus:ring-iduAzul focus:outline-none transition-all shadow-inner text-slate-700"
-                placeholder="Ej: ¿Cuáles son los requisitos para la entrega de modelos en la Fase de Diseño?">
+    <footer class="p-4 bg-white border-t border-slate-200 shadow-lg z-10">
+        <div class="max-w-4xl mx-auto relative flex items-center gap-2">
+            
+            <div class="relative flex-1 flex items-center">
+                <input type="text" id="user-input" 
+                    class="w-full p-4 pr-12 rounded-xl border border-slate-300 focus:ring-2 focus:ring-iduAzul focus:outline-none transition-all shadow-inner text-slate-700"
+                    placeholder="Escribe o dicta tu consulta sobre el manual...">
+                
+                <button onclick="toggleVoice()" id="mic-btn"
+                    class="absolute right-3 text-slate-400 hover:text-iduAzul transition-all p-1 text-xl">
+                    <i class="fas fa-microphone" id="mic-icon"></i>
+                </button>
+            </div>
+
             <button onclick="sendMessage()" id="send-btn"
-                class="absolute right-2 bg-iduAzul text-white p-2 px-5 rounded-lg hover:bg-sky-700 transition-all shadow-md">
+                class="bg-iduAzul text-white p-4 rounded-xl hover:bg-sky-700 transition-all shadow-md flex items-center justify-center">
                 <i class="fas fa-paper-plane"></i>
             </button>
         </div>
-        <p class="text-[10px] text-center mt-2 text-iduGris">Consultas exclusivas basadas en los manuales técnicos oficiales vigentes.</p>
+        <p class="text-[10px] text-center mt-2 text-iduGris">Consultas de voz optimizadas para dispositivos móviles en campo.</p>
     </footer>
 
     <script>
         const chatContainer = document.getElementById('chat-container');
         const userInput = document.getElementById('user-input');
+        const micIcon = document.getElementById('mic-icon');
+        const micBtn = document.getElementById('mic-btn');
+        
+        // Configuración de Reconocimiento de Voz Nativo (Web Speech API)
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        let isListening = false;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'es-CO'; // Configurado para español de Colombia
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            recognition.onstart = () => {
+                isListening = true;
+                micIcon.className = "fas fa-circle-notch animate-spin text-red-500";
+                userInput.placeholder = "Escuchando... habla ahora...";
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                micIcon.className = "fas fa-microphone text-slate-400";
+                userInput.placeholder = "Escribe o dicta tu consulta sobre el manual...";
+            };
+
+            recognition.onresult = (event) => {
+                const speechToText = event.results[0][0].transcript;
+                userInput.value = speechToText;
+                // Envía el mensaje automáticamente después de dictar
+                sendMessage();
+            };
+
+            recognition.onerror = () => {
+                alert("No se pudo reconocer la voz. Por favor verifica los permisos del micrófono.");
+            };
+        } else {
+            micBtn.style.display = 'none'; // Ocultar si el navegador antiguo no lo soporta
+            console.log("El navegador no soporta reconocimiento de voz.");
+        }
+
+        function toggleVoice() {
+            if (!recognition) return;
+            if (isListening) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        }
 
         async function sendMessage() {
             const text = userInput.value.trim();
             if (!text) return;
 
-            // Mensaje Usuario
             appendMessage(text, 'user');
             userInput.value = '';
 
-            // Loading
             const loadingId = appendMessage("Consultando los manuales de la entidad...", 'system', true);
 
             try {
-                // Petición a la Serverless Function de Netlify
                 const response = await fetch('/.netlify/functions/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -94,7 +159,7 @@
         function appendMessage(text, sender, isLoading = false) {
             const id = 'msg-' + Date.now();
             const div = document.createElement('div');
-            div.className = `flex flex-col ${sender === 'user' ? 'items-end' : 'items-start'}`;
+            div.className = `flex flex-col ${sender === 'user' ? 'items-end' : 'items-start'} animate-fade-in`;
             
             div.innerHTML = `
                 <div class="${sender === 'user' ? 'bg-iduAzul text-white' : 'bg-white border border-slate-200 text-slate-700'} 
