@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIM IDU - Chat de Análisis de Manuales</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        iduAzul: '#0070c0',
+                        iduVerde: '#b5d413',
+                        iduAzulClaro: '#5bc2e7',
+                        iduGris: '#7f7f7f'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 h-screen flex flex-col font-sans">
+
+    <nav class="bg-white border-b border-slate-200 py-3 px-6 shadow-sm flex justify-between items-center">
+        <div class="flex items-center gap-4">
+            <img src="logo-bim-idu.png" alt="BIM IDU Logo" class="h-12 object-contain" onerror="this.style.display='none'; document.getElementById('alt-logo').style.display='block';">
+            <div id="alt-logo" class="hidden flex items-center gap-1 font-bold text-2xl">
+                <span class="text-iduVerde">BIM</span><span class="text-slate-400 font-light">|</span><span class="text-iduAzul">idu</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-iduVerde animate-pulse"></span>
+            <span class="text-xs font-medium text-iduGris tracking-wider uppercase">Asistente IA Supervisor</span>
+        </div>
+    </nav>
+
+    <main class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6" id="chat-container">
+        <div class="flex flex-col items-start max-w-3xl animate-fade-in">
+            <div class="bg-white border-l-4 border-iduVerde p-4 rounded-r-2xl shadow-sm text-slate-700">
+                <p class="font-bold text-iduAzul mb-1">Estrategia BIM - IDU</p>
+                <p class="text-sm leading-relaxed">Bienvenido al sistema de consultas analíticas. Estoy entrenado con los manuales de especialidades de la entidad. ¿Qué norma, protocolo o directriz técnica deseas validar hoy?</p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="p-4 bg-white border-t border-slate-200 shadow-lg">
+        <div class="max-w-4xl mx-auto relative flex items-center">
+            <input type="text" id="user-input" 
+                class="w-full p-4 pr-16 rounded-xl border border-slate-300 focus:ring-2 focus:ring-iduAzul focus:outline-none transition-all shadow-inner text-slate-700"
+                placeholder="Ej: ¿Cuáles son los requisitos para la entrega de modelos en la Fase de Diseño?">
+            <button onclick="sendMessage()" id="send-btn"
+                class="absolute right-2 bg-iduAzul text-white p-2 px-5 rounded-lg hover:bg-sky-700 transition-all shadow-md">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+        <p class="text-[10px] text-center mt-2 text-iduGris">Consultas exclusivas basadas en los manuales técnicos oficiales vigentes.</p>
+    </footer>
+
+    <script>
+        const chatContainer = document.getElementById('chat-container');
+        const userInput = document.getElementById('user-input');
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            // Mensaje Usuario
+            appendMessage(text, 'user');
+            userInput.value = '';
+
+            // Loading
+            const loadingId = appendMessage("Consultando los manuales de la entidad...", 'system', true);
+
+            try {
+                // Petición a la Serverless Function de Netlify
+                const response = await fetch('/.netlify/functions/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: text })
+                });
+                
+                if (!response.ok) throw new Error();
+                const data = await response.json();
+                
+                document.getElementById(loadingId).innerText = data.answer;
+            } catch (error) {
+                document.getElementById(loadingId).innerText = "Hubo un problema al conectar con el asistente técnico. Por favor, intenta de nuevo.";
+                document.getElementById(loadingId).classList.add('text-red-500');
+            }
+        }
+
+        function appendMessage(text, sender, isLoading = false) {
+            const id = 'msg-' + Date.now();
+            const div = document.createElement('div');
+            div.className = `flex flex-col ${sender === 'user' ? 'items-end' : 'items-start'}`;
+            
+            div.innerHTML = `
+                <div class="${sender === 'user' ? 'bg-iduAzul text-white' : 'bg-white border border-slate-200 text-slate-700'} 
+                            p-4 rounded-2xl shadow-sm max-w-[85%] md:max-w-2xl text-sm leading-relaxed">
+                    <p id="${id}" class="${isLoading ? 'italic text-iduGris animate-pulse' : ''}">${text}</p>
+                </div>
+            `;
+            chatContainer.appendChild(div);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return id;
+        }
+
+        userInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") sendMessage();
+        });
+    </script>
+</body>
+</html>
