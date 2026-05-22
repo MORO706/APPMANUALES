@@ -23,7 +23,6 @@
         }
     </script>
     <style>
-        /* Imagen/textura de fondo geométrica sutil tipo ingeniería */
         .bg-corporativo {
             background-image: linear-gradient(rgba(248, 250, 252, 0.90), rgba(248, 250, 252, 0.90)), 
                               url('https://www.transparenttextures.com/patterns/cubes.png');
@@ -42,7 +41,7 @@
         </div>
         <div class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-iduVerde animate-pulse"></span>
-            <span class="text-xs font-medium text-iduGris tracking-wider uppercase">Voz & Análisis Activo</span>
+            <span class="text-xs font-medium text-iduGris tracking-wider uppercase">Conexión Directa Google Activa</span>
         </div>
     </nav>
 
@@ -50,31 +49,26 @@
         <div class="flex flex-col items-start max-w-3xl">
             <div class="bg-white border-l-4 border-iduVerde p-4 rounded-r-2xl shadow-sm text-slate-700">
                 <p class="font-bold text-iduAzul mb-1">Estrategia BIM & Gestión Contractual - IDU</p>
-                <p class="text-sm leading-relaxed">Bienvenido al sistema de consultas operativas de la entidad. Ahora puedes usar el **micrófono** para dictar tus dudas técnicos o contractuales directamente desde el frente de obra. ¿Qué directriz, código o procedimiento deseas validar hoy?</p>
+                <p class="text-sm leading-relaxed">Bienvenido al sistema de consultas operativas de la entidad de alto rendimiento. Ahora puedes usar el **micrófono** para dictar tus dudas técnicos, contractuales o de precios. ¿Qué deseas validar hoy?</p>
             </div>
         </div>
     </main>
 
     <footer class="p-4 bg-white border-t border-slate-200 shadow-lg z-10">
         <div class="max-w-4xl mx-auto relative flex items-center gap-2">
-            
             <div class="relative flex-1 flex items-center">
                 <input type="text" id="user-input" 
                     class="w-full p-4 pr-12 rounded-xl border border-slate-300 focus:ring-2 focus:ring-iduAzul focus:outline-none transition-all shadow-inner text-slate-700"
-                    placeholder="Escribe o dicta tu consulta sobre el manual...">
-                
-                <button onclick="toggleVoice()" id="mic-btn"
-                    class="absolute right-3 text-slate-400 hover:text-iduAzul transition-all p-1 text-xl">
+                    placeholder="Escribe o dicta tu consulta sobre el manual o precios...">
+                <button onclick="toggleVoice()" id="mic-btn" class="absolute right-3 text-slate-400 hover:text-iduAzul transition-all p-1 text-xl">
                     <i class="fas fa-microphone" id="mic-icon"></i>
                 </button>
             </div>
-
-            <button onclick="sendMessage()" id="send-btn"
-                class="bg-iduAzul text-white p-4 rounded-xl hover:bg-sky-700 transition-all shadow-md flex items-center justify-center">
+            <button onclick="sendMessage()" id="send-btn" class="bg-iduAzul text-white p-4 rounded-xl hover:bg-sky-700 transition-all shadow-md flex items-center justify-center">
                 <i class="fas fa-paper-plane"></i>
             </button>
         </div>
-        <p class="text-[10px] text-center mt-2 text-iduGris">Consultas optimizadas para dispositivos móviles en campo. Desarrollado para la supervisión IDU.</p>
+        <p class="text-[10px] text-center mt-2 text-iduGris">Conexión de alta velocidad libre de límites de tiempo. Desarrollado para la supervisión IDU.</p>
     </footer>
 
     <script>
@@ -83,14 +77,13 @@
         const micIcon = document.getElementById('mic-icon');
         const micBtn = document.getElementById('mic-btn');
         
-        // Configuración de Reconocimiento de Voz Nativo (Web Speech API)
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = null;
         let isListening = false;
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
-            recognition.lang = 'es-CO'; // Español de Colombia
+            recognition.lang = 'es-CO';
             recognition.continuous = false;
             recognition.interimResults = false;
 
@@ -103,30 +96,20 @@
             recognition.onend = () => {
                 isListening = false;
                 micIcon.className = "fas fa-microphone text-slate-400";
-                userInput.placeholder = "Escribe o dicta tu consulta sobre el manual...";
+                userInput.placeholder = "Escribe o dicta tu consulta...";
             };
 
             recognition.onresult = (event) => {
-                const speechToText = event.results[0][0].transcript;
-                userInput.value = speechToText;
-                // Envía la pregunta automáticamente al terminar de hablar
+                userInput.value = event.results[0][0].transcript;
                 sendMessage();
             };
-
-            recognition.onerror = () => {
-                alert("No se pudo reconocer la voz o el micrófono está bloqueado por el navegador.");
-            };
         } else {
-            micBtn.style.display = 'none'; // Ocultar el botón si el navegador es incompatible
+            micBtn.style.display = 'none';
         }
 
         function toggleVoice() {
             if (!recognition) return;
-            if (isListening) {
-                recognition.stop();
-            } else {
-                recognition.start();
-            }
+            if (isListening) recognition.stop(); else recognition.start();
         }
 
         async function sendMessage() {
@@ -136,27 +119,54 @@
             appendMessage(text, 'user');
             userInput.value = '';
 
-            const loadingId = appendMessage("Consultando la biblioteca de la entidad...", 'system', true);
+            const loadingId = appendMessage("Analizando manuales técnicos y matriz de precios del IDU...", 'system', true);
 
             try {
-                // CORRECCIÓN CLAVE: Agregada la extensión exacta '.js' para saltarse bloqueos corporativos
-                const response = await fetch('/.netlify/functions/chat.js', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: text })
-                });
-                
-                if (!response.ok) {
-                    const errData = await response.json();
-                    throw new Error(errData.answer || "Error en el servidor");
+                // LLAMADA CLAVE: Le pedimos primero la llave de forma segura a Netlify
+                const keyResponse = await fetch('/.netlify/functions/chat.js');
+                const keyData = await keyResponse.json();
+                const apiKey = keyData.key;
+
+                if (!apiKey || apiKey.includes("No encontrada")) {
+                    throw new Error("La API Key de Gemini no está configurada correctamente en el panel de Netlify.");
                 }
+
+                const systemInstruction = `
+                Eres el Asistente Experto en la estrategia BIM, Gestión Contractual, Procesos y Costos del IDU (Instituto de Desarrollo Urbano).
+                Tu único objetivo es responder consultas de los supervisores basándote de manera estricta y exclusiva en los documentos oficiales cargados en tu contexto (Manuales de Maduración, Interventoría, Gestión Contractual PR-GC-06, Guías Técnicas y el archivo Listado_Precios_Unitarios.csv).
                 
-                const data = await response.json();
-                document.getElementById(loadingId).innerText = data.answer;
+                Reglas obligatorias:
+                1. Responde SIEMPRE en español con un tono institucional, formal y claro.
+                2. Si te preguntan por códigos o precios de construcción, busca en la base de datos del CSV, identifica la coincidencia exacta y devuélvele el código, la descripción completa y el valor correspondiente.
+                3. Si la información no está en tus archivos de contexto, di cordialmente que tu facultad está limitada a la documentación indexada de la entidad.
+                4. Usa viñetas para estructurar la información de forma clara.
+                `;
+
+                // CONEXIÓN DIRECTA A GOOGLE (Sin límite de 10 segundos)
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+                const googleResponse = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        contents: [{ role: "user", parts: [{ text: text }] }],
+                        generationConfig: { temperature: 0.2 },
+                        systemInstruction: { parts: [{ text: systemInstruction }] }
+                    })
+                });
+
+                if (!googleResponse.ok) {
+                    const errTxt = await googleResponse.text();
+                    throw new Error(`Google API Error (${googleResponse.status}): ${errTxt.substring(0, 80)}`);
+                }
+
+                const data = await googleResponse.json();
+                const aiAnswer = data.candidates[0].content.parts[0].text;
+
+                document.getElementById(loadingId).innerText = aiAnswer;
                 document.getElementById(loadingId).classList.remove('italic', 'text-iduGris', 'animate-pulse');
             } catch (error) {
-                // Muestra el mensaje con la alerta devuelta por el archivo chat.js
-                document.getElementById(loadingId).innerText = error.message || "Error al conectar con la función del servidor. Verifica los deploys en Netlify.";
+                document.getElementById(loadingId).innerText = `⚠️ Error de Consulta: ${error.message}`;
                 document.getElementById(loadingId).classList.add('text-red-500', 'font-semibold');
                 document.getElementById(loadingId).classList.remove('italic', 'text-iduGris', 'animate-pulse');
             }
@@ -165,8 +175,7 @@
         function appendMessage(text, sender, isLoading = false) {
             const id = 'msg-' + Date.now();
             const div = document.createElement('div');
-            div.className = `flex flex-col ${sender === 'user' ? 'items-end' : 'items-start'} opacity-100 transition-opacity duration-300`;
-            
+            div.className = `flex flex-col ${sender === 'user' ? 'items-end' : 'items-start'}`;
             div.innerHTML = `
                 <div class="${sender === 'user' ? 'bg-iduAzul text-white' : 'bg-white border border-slate-200 text-slate-700'} 
                             p-4 rounded-2xl shadow-sm max-w-[85%] md:max-w-2xl text-sm leading-relaxed whitespace-pre-line">
