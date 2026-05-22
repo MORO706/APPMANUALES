@@ -1,8 +1,21 @@
 // netlify/functions/chat.js
 
 exports.handler = async function(event, context) {
+    // Asegurar encabezados para evitar bloqueos del navegador (CORS)
+    const headers = {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Methods": "POST, OPTIONS"
+    };
+
+    // Responder de inmediato a peticiones de verificación de navegador
+    if (event.httpMethod === "OPTIONS") {
+        return { statusCode: 200, headers, body: "" };
+    }
+
     if (event.httpMethod !== "POST") {
-        return { statusCode: 405, body: "Método no permitido" };
+        return { statusCode: 405, headers, body: JSON.stringify({ answer: "Método no permitido" }) };
     }
 
     try {
@@ -11,8 +24,9 @@ exports.handler = async function(event, context) {
 
         if (!apiKey) {
             return { 
-                statusCode: 500, 
-                body: JSON.stringify({ answer: "ERROR CONFIGURACIÓN: Falta ingresar la clave 'GEMINI_API_KEY' en el panel de Netlify." }) 
+                statusCode: 200, // Forzamos 200 para que la web lea el mensaje sin saltar el error de JSON
+                headers, 
+                body: JSON.stringify({ answer: "⚠️ CONFIGURACIÓN: No se encontró la clave 'GEMINI_API_KEY' en el panel de variables de Netlify." }) 
             };
         }
 
@@ -27,61 +41,52 @@ exports.handler = async function(event, context) {
         4. Estructura las respuestas largas usando viñetas o listas numeradas.
         `;
 
-        // RETORNO AL MÉTODO ESTÁNDAR (generateContent): Evita problemas de lectura de flujos continuos en Netlify
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
         const response = await fetch(url, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                contents: [{
-                    role: "user",
-                    parts: [{ text: prompt }]
-                }],
-                generationConfig: {
-                    temperature: 0.2
-                },
-                systemInstruction: {
-                    parts: [{ text: systemInstruction }]
-                }
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: { temperature: 0.2 },
+                systemInstruction: { parts: [{ text: systemInstruction }] }
             })
         });
 
-        // Si Google responde con un error técnico (Ej: Clave inválida, cuota excedida)
+        const responseText = await response.text();
+        
+        // Si Google devuelve un error (ej. cuota excedida o mala petición)
         if (!response.ok) {
-            const errorText = await response.text();
             return {
-                statusCode: response.status,
-                headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
-                body: JSON.stringify({ answer: `ERROR DE GOOGLE API (${response.status}): ${errorText.substring(0, 150)}... Verifique la API Key.` })
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({ answer: `🔴 ERROR GOOGLE API (${response.status}): ${responseText.substring(0, 100)}...` })
             };
         }
 
-        const data = await response.json();
+        const data = JSON.parse(responseText);
         
-        // Extracción segura del texto sin importar variaciones de la API
         if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0]) {
-            const responseText = data.candidates[0].content.parts[0].text;
+            const aiAnswer = data.candidates[0].content.parts[0].text;
             return {
                 statusCode: 200,
-                headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
-                body: JSON.stringify({ answer: responseText })
+                headers,
+                body: JSON.stringify({ answer: aiAnswer })
             };
         } else {
             return {
-                statusCode: 500,
-                headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
-                body: JSON.stringify({ answer: "ERROR ESTRUCTURA: Google respondió, pero el formato del documento no contiene texto legible." })
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({ answer: "⚠️ ESTRUCTURA: Google procesó la consulta, pero no devolvió un bloque de texto válido." })
             };
         }
 
     } catch (error) {
+        console.error("Error detectado:", error);
         return {
-            statusCode: 500,
-            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
-            body: JSON.stringify({ answer: `ERROR INTERNO NETLIFY: ${error.message}. Intente de nuevo.` })
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ answer: `⚙️ ERROR INTERNO: ${error.message}. Intente de nuevo.` })
         };
     }
 };
