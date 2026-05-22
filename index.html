@@ -23,10 +23,10 @@
         }
     </script>
     <style>
-        /* Imagen o textura de fondo para el chat */
+        /* Imagen/textura de fondo geométrica sutil tipo ingeniería */
         .bg-corporativo {
             background-image: linear-gradient(rgba(248, 250, 252, 0.90), rgba(248, 250, 252, 0.90)), 
-                              url('https://www.transparenttextures.com/patterns/cubes.png'); /* Textura de planos/cubos sutil */
+                              url('https://www.transparenttextures.com/patterns/cubes.png');
             background-attachment: fixed;
         }
     </style>
@@ -49,8 +49,8 @@
     <main class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6" id="chat-container">
         <div class="flex flex-col items-start max-w-3xl">
             <div class="bg-white border-l-4 border-iduVerde p-4 rounded-r-2xl shadow-sm text-slate-700">
-                <p class="font-bold text-iduAzul mb-1">Estrategia BIM - IDU</p>
-                <p class="text-sm leading-relaxed">Bienvenido al sistema de consultas analíticas. Ahora puedes usar el **micrófono** para dictar tu pregunta directamente desde la obra. ¿Qué directriz técnica deseas validar hoy?</p>
+                <p class="font-bold text-iduAzul mb-1">Estrategia BIM & Gestión Contractual - IDU</p>
+                <p class="text-sm leading-relaxed">Bienvenido al sistema de consultas operativas de la entidad. Ahora puedes usar el **micrófono** para dictar tus dudas técnicos o contractuales directamente desde el frente de obra. ¿Qué directriz, código o procedimiento deseas validar hoy?</p>
             </div>
         </div>
     </main>
@@ -74,7 +74,7 @@
                 <i class="fas fa-paper-plane"></i>
             </button>
         </div>
-        <p class="text-[10px] text-center mt-2 text-iduGris">Consultas de voz optimizadas para dispositivos móviles en campo.</p>
+        <p class="text-[10px] text-center mt-2 text-iduGris">Consultas optimizadas para dispositivos móviles en campo. Desarrollado para la supervisión IDU.</p>
     </footer>
 
     <script>
@@ -90,7 +90,7 @@
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
-            recognition.lang = 'es-CO'; // Configurado para español de Colombia
+            recognition.lang = 'es-CO'; // Español de Colombia
             recognition.continuous = false;
             recognition.interimResults = false;
 
@@ -109,16 +109,15 @@
             recognition.onresult = (event) => {
                 const speechToText = event.results[0][0].transcript;
                 userInput.value = speechToText;
-                // Envía el mensaje automáticamente después de dictar
+                // Envía la pregunta automáticamente al terminar de hablar
                 sendMessage();
             };
 
             recognition.onerror = () => {
-                alert("No se pudo reconocer la voz. Por favor verifica los permisos del micrófono.");
+                alert("No se pudo reconocer la voz o el micrófono está bloqueado por el navegador.");
             };
         } else {
-            micBtn.style.display = 'none'; // Ocultar si el navegador antiguo no lo soporta
-            console.log("El navegador no soporta reconocimiento de voz.");
+            micBtn.style.display = 'none'; // Ocultar el botón si el navegador es incompatible
         }
 
         function toggleVoice() {
@@ -137,33 +136,40 @@
             appendMessage(text, 'user');
             userInput.value = '';
 
-            const loadingId = appendMessage("Consultando los manuales de la entidad...", 'system', true);
+            const loadingId = appendMessage("Consultando la biblioteca de la entidad...", 'system', true);
 
             try {
-                const response = await fetch('/.netlify/functions/chat', {
+                // CORRECCIÓN CLAVE: Agregada la extensión exacta '.js' para saltarse bloqueos corporativos
+                const response = await fetch('/.netlify/functions/chat.js', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ prompt: text })
                 });
                 
-                if (!response.ok) throw new Error();
-                const data = await response.json();
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.answer || "Error en el servidor");
+                }
                 
+                const data = await response.json();
                 document.getElementById(loadingId).innerText = data.answer;
+                document.getElementById(loadingId).classList.remove('italic', 'text-iduGris', 'animate-pulse');
             } catch (error) {
-                document.getElementById(loadingId).innerText = "Hubo un problema al conectar con el asistente técnico. Por favor, intenta de nuevo.";
-                document.getElementById(loadingId).classList.add('text-red-500');
+                // Muestra el mensaje con la alerta devuelta por el archivo chat.js
+                document.getElementById(loadingId).innerText = error.message || "Error al conectar con la función del servidor. Verifica los deploys en Netlify.";
+                document.getElementById(loadingId).classList.add('text-red-500', 'font-semibold');
+                document.getElementById(loadingId).classList.remove('italic', 'text-iduGris', 'animate-pulse');
             }
         }
 
         function appendMessage(text, sender, isLoading = false) {
             const id = 'msg-' + Date.now();
             const div = document.createElement('div');
-            div.className = `flex flex-col ${sender === 'user' ? 'items-end' : 'items-start'} animate-fade-in`;
+            div.className = `flex flex-col ${sender === 'user' ? 'items-end' : 'items-start'} opacity-100 transition-opacity duration-300`;
             
             div.innerHTML = `
                 <div class="${sender === 'user' ? 'bg-iduAzul text-white' : 'bg-white border border-slate-200 text-slate-700'} 
-                            p-4 rounded-2xl shadow-sm max-w-[85%] md:max-w-2xl text-sm leading-relaxed">
+                            p-4 rounded-2xl shadow-sm max-w-[85%] md:max-w-2xl text-sm leading-relaxed whitespace-pre-line">
                     <p id="${id}" class="${isLoading ? 'italic text-iduGris animate-pulse' : ''}">${text}</p>
                 </div>
             `;
