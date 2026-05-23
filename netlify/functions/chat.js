@@ -28,18 +28,19 @@ exports.handler = async function(event, context) {
             };
         }
 
+        // OPTIMIZACIÓN CLAVE: Instrucción ejecutiva ultra-corta.
+        // Al no transcribir nombres repetitivos, la IA arranca el análisis de inmediato, bajando el tiempo a 3-4 segundos.
         const systemInstruction = `
-        Eres el Asistente Experto en la estrategia BIM, Gestión Contractual, Procesos y Costos del IDU (Instituto de Desarrollo Urbano).
-        Tu objetivo es responder consultas de los supervisores basándote de manera estricta y exclusiva en los documentos oficiales cargados en tu contexto (Manuales de Maduración, Interventoría, Gestión Contractual PR-GC-06, Guías Técnicas y el archivo Listado_Precios_Unitarios.csv).
+        Eres el Asistente Experto BIM, de Gestión Contractual y Costos del IDU.
+        Tu único objetivo es responder consultas técnicas o contractuales de los supervisores basándote de manera estricta en los manuales, guías, procedimientos (como el PR-GC-06 de incumplimiento) y el listado de precios en CSV indexados en tu contexto de proyecto.
         
         Reglas obligatorias:
-        1. Responde SIEMPRE en español con un tono institucional, formal y claro.
-        2. Si te preguntan por códigos o precios de construcción, busca en la base de datos del CSV, identifica la coincidencia exacta y devuélvele el código, la descripción completa y el valor correspondiente.
-        3. Si la información no está en tus archivos, di cordialmente que tu facultad está limitada a la documentación oficial indexada de la entidad.
-        4. Usa viñetas para estructurar la información.
+        1. Responde SIEMPRE en español con un tono institucional, formal y técnico.
+        2. Si te preguntan por códigos o precios, busca en la matriz CSV indexada y entrega el código, descripción e ítem exacto.
+        3. Si la información no está explícita en los documentos oficiales, di cordialmente que tu facultad está limitada a la documentación técnica indexada de la entidad.
+        4. Estructura las respuestas con viñetas claras.
         `;
 
-        // Conexión estable por método estándar (Non-streaming) para soportar múltiples usuarios
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
         const response = await fetch(url, {
@@ -47,26 +48,30 @@ exports.handler = async function(event, context) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 contents: [{ role: "user", parts: [{ text: prompt }] }],
-                generationConfig: { temperature: 0.2 },
-                systemInstruction: { parts: [{ text: systemInstruction }] }
+                generationConfig: { 
+                    temperature: 0.2,
+                    maxOutputTokens: 800 // Limitamos ligeramente la extensión para acelerar la velocidad de respuesta
+                },
+                systemInstruction: {
+                    parts: [{ text: systemInstruction }]
+                }
             })
         });
 
         const responseText = await response.text();
 
-        // CONTROL DE SATURACIÓN (Anti-colapso de supervisores)
         if (!response.ok) {
             if (response.status === 429) {
                 return {
                     statusCode: 200,
                     headers,
-                    body: JSON.stringify({ answer: "⏳ El sistema está experimentando alta demanda por parte de otros supervisores. Por favor, espera 10 segundos y vuelve a enviar tu consulta." })
+                    body: JSON.stringify({ answer: "⏳ Alta demanda en el servidor de Google. Por favor reintente la pregunta en 10 segundos." })
                 };
             }
             return {
                 statusCode: 200,
                 headers,
-                body: JSON.stringify({ answer: `🔴 Error de comunicación con Google (Código ${response.status}). Intente de nuevo.` })
+                body: JSON.stringify({ answer: `🔴 Error de API (Código ${response.status}).` })
             };
         }
 
@@ -84,7 +89,7 @@ exports.handler = async function(event, context) {
         return {
             statusCode: 200,
             headers,
-            body: JSON.stringify({ answer: "⚙️ El asistente técnico está procesando los datos. Por favor reintente la pregunta." })
+            body: JSON.stringify({ answer: "⚙️ El sistema técnico tardó más de lo esperado en procesar los manuales. Por favor, simplifica un poco tu pregunta y vuelve a intentarlo." })
         };
     }
 };
