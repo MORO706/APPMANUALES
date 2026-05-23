@@ -1,6 +1,7 @@
 // netlify/functions/chat.js
 
 exports.handler = async function(event, context) {
+    // Encabezados obligatorios para permitir la comunicación segura entre el navegador y Netlify (CORS)
     const headers = {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
@@ -24,33 +25,35 @@ exports.handler = async function(event, context) {
             return { 
                 statusCode: 200, 
                 headers, 
-                body: JSON.stringify({ answer: "⚠️ ERROR: Configuración incompleta. Falta la GEMINI_API_KEY en Netlify." }) 
+                body: JSON.stringify({ answer: "⚠️ CONFIGURACIÓN: Ingrese la clave 'GEMINI_API_KEY' en el panel de Netlify." }) 
             };
         }
 
-        // OPTIMIZACIÓN CLAVE: Instrucción ejecutiva ultra-corta.
-        // Al no transcribir nombres repetitivos, la IA arranca el análisis de inmediato, bajando el tiempo a 3-4 segundos.
+        // Directrices institucionales del IDU
         const systemInstruction = `
-        Eres el Asistente Experto BIM, de Gestión Contractual y Costos del IDU.
-        Tu único objetivo es responder consultas técnicas o contractuales de los supervisores basándote de manera estricta en los manuales, guías, procedimientos (como el PR-GC-06 de incumplimiento) y el listado de precios en CSV indexados en tu contexto de proyecto.
+        Eres el Asistente Experto en la estrategia BIM, Gestión Contractual, Procesos y Costos del IDU (Instituto de Desarrollo Urbano).
+        Tu único objetivo es responder consultas de los supervisores basándote de manera estricta y exclusiva en los documentos oficiales cargados en tu contexto (Manuales de Maduración, Interventoría, Gestión Contractual PR-GC-06, Guías Técnicas y el archivo Listado_Precios_Unitarios.csv).
         
-        Reglas obligatorias:
-        1. Responde SIEMPRE en español con un tono institucional, formal y técnico.
-        2. Si te preguntan por códigos o precios, busca en la matriz CSV indexada y entrega el código, descripción e ítem exacto.
-        3. Si la información no está explícita en los documentos oficiales, di cordialmente que tu facultad está limitada a la documentación técnica indexada de la entidad.
-        4. Estructura las respuestas con viñetas claras.
+        Reglas obligatorias de análisis y respuesta:
+        1. Responde SIEMPRE en español con un tono institucional, formal, claro y profesional.
+        2. Si te preguntan por códigos o precios de construcción, busca en la base de datos del CSV, identifica la coincidencia exacta y devuélvele el código, la descripción completa y el valor correspondiente.
+        3. Si la información solicitada no se encuentra en los manuales o en el listado de precios, responde textualmente: "Mi facultad como Asistente Experto está estrictamente limitada a la información contenida en los manuales de especialidad de la entidad. No encontré esa información en la documentación oficial disponible."
+        4. Estructura las respuestas largas usando viñetas o listas numeradas.
         `;
 
+        // ENDPOINT ESTABLE: Conexión directa al motor de inferencia de Gemini
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
         const response = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                contents: [{ role: "user", parts: [{ text: prompt }] }],
-                generationConfig: { 
-                    temperature: 0.2,
-                    maxOutputTokens: 800 // Limitamos ligeramente la extensión para acelerar la velocidad de respuesta
+                contents: [{
+                    role: "user",
+                    parts: [{ text: prompt }]
+                }],
+                generationConfig: {
+                    temperature: 0.1 // Forzar máxima precisión técnica y evitar inventos
                 },
                 systemInstruction: {
                     parts: [{ text: systemInstruction }]
@@ -60,36 +63,38 @@ exports.handler = async function(event, context) {
 
         const responseText = await response.text();
 
+        // Si Google está saturado o la clave falla, capturamos el texto antes de que rompa el JSON de la interfaz
         if (!response.ok) {
-            if (response.status === 429) {
-                return {
-                    statusCode: 200,
-                    headers,
-                    body: JSON.stringify({ answer: "⏳ Alta demanda en el servidor de Google. Por favor reintente la pregunta en 10 segundos." })
-                };
-            }
             return {
                 statusCode: 200,
                 headers,
-                body: JSON.stringify({ answer: `🔴 Error de API (Código ${response.status}).` })
+                body: JSON.stringify({ answer: `⏳ El sistema está procesando consultas de otros ingenieros. Por favor, reintente en 10 segundos. (Status ${response.status})` })
             };
         }
 
         const data = JSON.parse(responseText);
-        const aiAnswer = data.candidates[0].content.parts[0].text;
-
-        return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({ answer: aiAnswer })
-        };
+        
+        if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0]) {
+            const aiAnswer = data.candidates[0].content.parts[0].text;
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({ answer: aiAnswer })
+            };
+        } else {
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({ answer: "⚠️ Estructura de datos no legible. Por favor, simplifica tu consulta." })
+            };
+        }
 
     } catch (error) {
-        console.error("Error:", error);
+        console.error("Error en la función:", error);
         return {
             statusCode: 200,
             headers,
-            body: JSON.stringify({ answer: "⚙️ El sistema técnico tardó más de lo esperado en procesar los manuales. Por favor, simplifica un poco tu pregunta y vuelve a intentarlo." })
+            body: JSON.stringify({ answer: "⏳ El servidor del IDU está tomando un momento adicional para procesar los manuales de obra. Por favor, reintente en unos segundos." })
         };
     }
 };
