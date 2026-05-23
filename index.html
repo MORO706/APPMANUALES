@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BIM IDU - Asistente de Manuales</title>
-    <link rel="icon" type="image/png" href="logo-bim-idu.png">
+    <link class="rounded-full" rel="icon" type="image/png" href="logo-bim-idu.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -41,7 +41,7 @@
         </div>
         <div class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-iduVerde animate-pulse"></span>
-            <span class="text-xs font-medium text-iduGris tracking-wider uppercase">Servidor Seguro Centralizado Activo</span>
+            <span class="text-xs font-medium text-iduGris tracking-wider uppercase">Servidor IDU Conectado</span>
         </div>
     </nav>
 
@@ -68,7 +68,7 @@
                 <i class="fas fa-paper-plane"></i>
             </button>
         </div>
-        <p class="text-[10px] text-center mt-2 text-iduGris">Canal Institucional Protegido. Versión 1 Estabilizada.</p>
+        <p class="text-[10px] text-center mt-2 text-iduGris">Canal Institucional Protegido. Versión 1 de Alta Velocidad.</p>
     </footer>
 
     <script>
@@ -82,7 +82,7 @@
         let isListening = false;
 
         if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
+            recognition = new Recognition = new SpeechRecognition();
             recognition.lang = 'es-CO';
             recognition.continuous = false;
             recognition.interimResults = false;
@@ -122,19 +122,23 @@
             const loadingId = appendMessage("Analizando manuales, guías y precios unitarios del IDU...", 'system', true);
 
             try {
-                // LLAMADA ESTABLE AL BACKEND DE NETLIFY (Ruta nativa directa)
-                const response = await fetch('/.netlify/functions/chat.js', {
+                // RUTA OFICIAL REPARADA: Se elimina el '.js' para cumplir con el estándar de Netlify
+                const response = await fetch('/.netlify/functions/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ prompt: text })
                 });
+                
+                if (!response.ok) {
+                    throw new Error("Respuesta de servidor inválida");
+                }
                 
                 const data = await response.json();
                 
                 document.getElementById(loadingId).innerText = data.answer;
                 document.getElementById(loadingId).classList.remove('italic', 'text-iduGris', 'animate-pulse');
             } catch (error) {
-                document.getElementById(loadingId).innerText = "⏳ El servidor seguro está procesando la alta demanda de consultas en obra. Por favor reintenta en un momento.";
+                document.getElementById(loadingId).innerText = "⚙️ El asistente técnico está procesando los datos. Por favor reintente la pregunta en unos segundos.";
                 document.getElementById(loadingId).classList.add('text-amber-600', 'font-medium');
                 document.getElementById(loadingId).classList.remove('italic', 'text-iduGris', 'animate-pulse');
             }
