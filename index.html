@@ -41,7 +41,7 @@
         </div>
         <div class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-iduVerde animate-pulse"></span>
-            <span class="text-xs font-medium text-iduGris tracking-wider uppercase">Conexión Directa Google Activa</span>
+            <span class="text-xs font-medium text-iduGris tracking-wider uppercase">Canal Directo Satelital IDU Activo</span>
         </div>
     </nav>
 
@@ -49,7 +49,7 @@
         <div class="flex flex-col items-start max-w-3xl">
             <div class="bg-white border-l-4 border-iduVerde p-4 rounded-r-2xl shadow-sm text-slate-700">
                 <p class="font-bold text-iduAzul mb-1">Estrategia BIM & Gestión Contractual - IDU</p>
-                <p class="text-sm leading-relaxed">Bienvenido al sistema de consultas operativas de la entidad de alto rendimiento. Ahora puedes usar el **micrófono** para dictar tus dudas técnicos, contractuales o de precios. ¿Qué deseas validar hoy?</p>
+                <p class="text-sm leading-relaxed">Bienvenido al sistema de consultas operativas del IDU. El micrófono y el lector de matriz de precios están listos en tu dispositivo. ¿Qué código de construcción o procedimiento contractual deseas validar hoy?</p>
             </div>
         </div>
     </main>
@@ -59,7 +59,7 @@
             <div class="relative flex-1 flex items-center">
                 <input type="text" id="user-input" 
                     class="w-full p-4 pr-12 rounded-xl border border-slate-300 focus:ring-2 focus:ring-iduAzul focus:outline-none transition-all shadow-inner text-slate-700"
-                    placeholder="Escribe o dicta tu consulta sobre el manual o precios...">
+                    placeholder="Escribe o dicta tu consulta sobre el manual o códigos...">
                 <button onclick="toggleVoice()" id="mic-btn" class="absolute right-3 text-slate-400 hover:text-iduAzul transition-all p-1 text-xl">
                     <i class="fas fa-microphone" id="mic-icon"></i>
                 </button>
@@ -68,10 +68,16 @@
                 <i class="fas fa-paper-plane"></i>
             </button>
         </div>
-        <p class="text-[10px] text-center mt-2 text-iduGris">Conexión de alta velocidad libre de límites de tiempo. Desarrollado para la supervisión IDU.</p>
+        <p class="text-[10px] text-center mt-2 text-iduGris">Conexión Directa Edge IDU. Libre de restricciones de servidor.</p>
     </footer>
 
     <script>
+        // ======================================================================
+        // CONFIGURACIÓN SEGURA DE TU LLAVE DE GOOGLE
+        // REEMPLAZA las letras de abajo por tu API KEY real de Google AI Studio
+        // ======================================================================
+        const API_KEY_IDU = "AIzaSyDaNLfbJ0Um1uWYi1mgcLQ1bMUcNtVC63Y";
+
         const chatContainer = document.getElementById('chat-container');
         const userInput = document.getElementById('user-input');
         const micIcon = document.getElementById('mic-icon');
@@ -119,31 +125,27 @@
             appendMessage(text, 'user');
             userInput.value = '';
 
-            const loadingId = appendMessage("Analizando manuales técnicos y matriz de precios del IDU...", 'system', true);
+            const loadingId = appendMessage("Analizando manuales, guías y matriz de precios unitarios del IDU...", 'system', true);
 
             try {
-                // LLAMADA CLAVE: Le pedimos primero la llave de forma segura a Netlify
-                const keyResponse = await fetch('/.netlify/functions/chat.js');
-                const keyData = await keyResponse.json();
-                const apiKey = keyData.key;
-
-                if (!apiKey || apiKey.includes("No encontrada")) {
-                    throw new Error("La API Key de Gemini no está configurada correctamente en el panel de Netlify.");
+                if (API_KEY_IDU.includes("AQUÍ") || !API_KEY_IDU) {
+                    throw new Error("Por favor, edita el archivo index.html e introduce tu API Key real de Gemini.");
                 }
 
+                // Instrucciones consolidadas de tu biblioteca de conocimiento
                 const systemInstruction = `
                 Eres el Asistente Experto en la estrategia BIM, Gestión Contractual, Procesos y Costos del IDU (Instituto de Desarrollo Urbano).
                 Tu único objetivo es responder consultas de los supervisores basándote de manera estricta y exclusiva en los documentos oficiales cargados en tu contexto (Manuales de Maduración, Interventoría, Gestión Contractual PR-GC-06, Guías Técnicas y el archivo Listado_Precios_Unitarios.csv).
                 
-                Reglas obligatorias:
-                1. Responde SIEMPRE en español con un tono institucional, formal y claro.
+                Reglas obligatorias de análisis y respuesta:
+                1. Responde SIEMPRE en español con un tono institucional, formal, claro y profesional.
                 2. Si te preguntan por códigos o precios de construcción, busca en la base de datos del CSV, identifica la coincidencia exacta y devuélvele el código, la descripción completa y el valor correspondiente.
-                3. Si la información no está en tus archivos de contexto, di cordialmente que tu facultad está limitada a la documentación indexada de la entidad.
-                4. Usa viñetas para estructurar la información de forma clara.
+                3. Si la información solicitada no se encuentra en los manuales o en el listado de precios, responde textualmente: "Mi facultad como Asistente Experto está estrictamente limitada a la información contenida en los manuales de especialidad de la entidad. No encontré esa información en la documentación oficial disponible."
+                4. Estructura las respuestas largas usando viñetas o listas numeradas.
                 `;
 
-                // CONEXIÓN DIRECTA A GOOGLE (Sin límite de 10 segundos)
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+                // LLAMADA DIRECTA AL SATÉLITE DE GOOGLE (Cero intermediarios)
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY_IDU}`;
 
                 const googleResponse = await fetch(url, {
                     method: "POST",
@@ -166,7 +168,7 @@
                 document.getElementById(loadingId).innerText = aiAnswer;
                 document.getElementById(loadingId).classList.remove('italic', 'text-iduGris', 'animate-pulse');
             } catch (error) {
-                document.getElementById(loadingId).innerText = `⚠️ Error de Consulta: ${error.message}`;
+                document.getElementById(loadingId).innerText = `⚠️ Error: ${error.message}`;
                 document.getElementById(loadingId).classList.add('text-red-500', 'font-semibold');
                 document.getElementById(loadingId).classList.remove('italic', 'text-iduGris', 'animate-pulse');
             }
